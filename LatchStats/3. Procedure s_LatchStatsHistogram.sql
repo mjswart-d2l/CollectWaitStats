@@ -21,3 +21,4 @@ SELECT LatchClass,
            PARTITION BY (LatchClass) 
            ORDER BY (CollectionDate)) as LatchTimeMs
 FROM   LatchStatsHistogram;
+GO

@@ -22,5 +22,3 @@ AS
 	DELETE dbo.LatchStats
 	WHERE CollectionDate < DATEADD( DAY, -7, GETUTCDATE() );
 GO
-
-

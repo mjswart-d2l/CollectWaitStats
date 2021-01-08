@@ -26,5 +26,3 @@ AS
 	DELETE dbo.SpinStats
 	WHERE CollectionDate < DATEADD( DAY, -7, GETUTCDATE() );
 GO
-
-

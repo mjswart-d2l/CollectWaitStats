@@ -21,3 +21,4 @@ SELECT [Name],
            PARTITION BY ([Name]) 
            ORDER BY (CollectionDate)) as Collisions
 FROM   WaitStatsHistogram;
+GO

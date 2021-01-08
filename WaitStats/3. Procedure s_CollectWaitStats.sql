@@ -23,3 +23,4 @@ AS
 	-- Clean up
 	DELETE dbo.WaitStats
 	WHERE CollectionDate < DATEADD( DAY, -7, GETUTCDATE() );
+GO
