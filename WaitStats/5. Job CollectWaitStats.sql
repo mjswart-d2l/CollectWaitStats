@@ -30,4 +30,4 @@ BEGIN
 		@freq_subday_type=4, 
 		@freq_subday_interval=1;
 END
-
+GO

@@ -15,3 +15,4 @@ BEGIN
 			PRIMARY KEY (CollectionDate, LatchClass)
 	);
 END
+GO

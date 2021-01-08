@@ -1,3 +1,22 @@
+IF NOT EXISTS (
+	SELECT *
+	FROM sys.tables
+	WHERE object_id = object_id('dbo.WaitStats')
+)
+BEGIN
+	CREATE TABLE dbo.WaitStats
+	(
+		WaitType NVARCHAR(60),
+		WaitingTasksCount BIGINT,
+		WaitTimeMs BIGINT,
+		MaxWaitTimeMs BIGINT,
+		SignalWaitTimeMs BIGINT,
+		CollectionDate DATETIME,
+		CONSTRAINT PK_WaitStats
+			PRIMARY KEY CLUSTERED (WaitType, CollectionDate)
+	);
+END
+GO
 CREATE OR ALTER VIEW dbo.ImportantWaits
 AS
 	SELECT * 
@@ -79,4 +98,87 @@ AS
         N'XE_DISPATCHER_JOIN', 
         N'XE_DISPATCHER_WAIT', 
         N'XE_TIMER_EVENT');
+GO
+CREATE OR ALTER PROCEDURE dbo.s_CollectWaitStats (
+	@WaitThresholdInMs BIGINT
+)
+AS
+	INSERT dbo.WaitStats( 
+		WaitType, 
+		WaitingTasksCount, 
+		WaitTimeMs, 
+		MaxWaitTimeMs,
+		SignalWaitTimeMs,
+		CollectionDate
+	)
+	SELECT 
+		wait_type, 
+		waiting_tasks_count, 
+		wait_time_ms, 
+		max_wait_time_ms,
+		signal_wait_time_ms,
+		GETUTCDATE()
+	FROM sys.dm_os_wait_stats
+	WHERE wait_time_ms > @WaitThresholdInMs;
+
+	-- Clean up
+	DELETE dbo.WaitStats
+	WHERE CollectionDate < DATEADD( DAY, -7, GETUTCDATE() );
+GO
+CREATE OR ALTER PROCEDURE dbo.s_WaitStatsHistogram
+	@HistogramBucketSizeInMinutes INT = 60
+AS
+
+WITH WaitStatsHistogram AS
+(
+    SELECT W.WaitType,
+           C.GroupedCollectionDate AS CollectionDate,
+           MAX(WaitTimeMs) AS WaitTimeMs
+    FROM   ImportantWaits W
+    CROSS APPLY ( SELECT DATEADD(
+                    MINUTE, 
+                    (DATEDIFF(MINUTE, 0, W.CollectionDate ) / @HistogramBucketSizeInMinutes) * @HistogramBucketSizeInMinutes, 
+                    0) ) AS C(GroupedCollectionDate)
+    GROUP BY W.WaitType, C.GroupedCollectionDate
+)
+SELECT WaitType,
+       CollectionDate,
+       WaitTimeMs - 
+  	     LAG(WaitTimeMs, 1, NULL) OVER ( 
+           PARTITION BY (WaitType) 
+           ORDER BY (CollectionDate)) as WaitTimeMs
+FROM   WaitStatsHistogram;
+GO
+DECLARE @DBName sysname = DB_NAME();
+DECLARE @JobName sysname = 'CollectWaitStats';
+
+IF NOT EXISTS 
+(
+	SELECT *
+	FROM msdb.dbo.sysjobs
+	WHERE name = @JobName
+)
+BEGIN
+	EXEC msdb.dbo.sp_add_job 
+		@job_name = @JobName;
+
+	EXEC msdb.dbo.sp_add_jobstep 
+		@job_name = @JobName,
+		@step_name = N'Collect Wait Stats',
+		@command = N'exec s_CollectWaitStats @WaitThresholdInMs = 1000;', 
+		@database_name = @DBName;
+	
+	EXEC msdb.dbo.sp_add_jobserver 
+		@job_name = @JobName,
+		@server_name = N'(local)';
+
+	EXEC msdb.dbo.sp_add_jobschedule 
+		@job_name = @JobName,
+		@name=N'Minutely', 
+		@enabled=1, 
+		@freq_type=4, 
+		@freq_interval=1, 
+		@freq_subday_type=4, 
+		@freq_subday_interval=1;
+END
 GO

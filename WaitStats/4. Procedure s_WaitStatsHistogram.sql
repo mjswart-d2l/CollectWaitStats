@@ -21,3 +21,4 @@ SELECT WaitType,
            PARTITION BY (WaitType) 
            ORDER BY (CollectionDate)) as WaitTimeMs
 FROM   WaitStatsHistogram;
+GO

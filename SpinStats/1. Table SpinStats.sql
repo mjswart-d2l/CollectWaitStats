@@ -17,3 +17,4 @@ BEGIN
 			PRIMARY KEY ([Name], CollectionDate)
 	);
 END
+GO
