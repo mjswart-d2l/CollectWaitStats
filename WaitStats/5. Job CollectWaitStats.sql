@@ -1,9 +1,9 @@
 DECLARE @DBName sysname = DB_NAME();
 DECLARE @JobName sysname = 'CollectWaitStats';
 DECLARE @JobDesc sysname
-    = 'Source: ' + CHAR(9) + 'https://github.com/mjswart/CollectWaitStats.' 
-	+ 'Created: '+ CHAR(9) + CAST(GETDATE() AS VARCHAR(20))
-    + 'By: '+ CHAR(9) + SUSER_NAME();
+    = ' Source:   ' + 'https://github.com/mjswart/CollectWaitStats. ;' 
+	+ ' Created:   '+ CAST(GETDATE() AS VARCHAR(20)) + ';'
+    + ' By:    '+ SUSER_NAME() + ';';
 
 IF NOT EXISTS 
 (
